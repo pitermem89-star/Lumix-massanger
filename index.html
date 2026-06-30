@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumix Messenger</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { display: flex; height: 100vh; background-color: #313338; color: #dbdee1; overflow: hidden; }
+        
+        /* Окно Авторизации */
+        #auth-block { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1e1f22; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
+        .auth-card { background: #313338; padding: 30px; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; }
+        .auth-card h2 { color: #fff; margin-bottom: 20px; }
+        .auth-card input { background-color: #1e1f22; border: 1px solid #1f2023; padding: 12px; border-radius: 4px; color: #fff; width: 100%; margin-bottom: 15px; outline: none; font-size: 16px; }
+        .auth-card button { background-color: #5865f2; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; transition: background 0.2s; }
+        .auth-card button:hover { background-color: #4752c4; }
+        
+        .auth-toggle-link { color: #00aff4; cursor: pointer; font-size: 14px; margin-top: 15px; display: inline-block; user-select: none; }
+        .auth-toggle-link:hover { text-decoration: underline; }
+
+        .file-upload-btn { display: block; background-color: #4e5058; color: #fff; padding: 10px; border-radius: 4px; cursor: pointer; margin-bottom: 15px; font-size: 14px; font-weight: 500; transition: background 0.2s; }
+        .file-upload-btn:hover { background-color: #6d6f78; }
+
+        .username-wrapper { display: flex; align-items: center; background-color: #1e1f22; border: 1px solid #1f2023; border-radius: 4px; margin-bottom: 15px; padding-left: 14px; width: 100%; }
+        .username-prefix { color: #00aff4; font-size: 16px; font-weight: bold; user-select: none; }
+        .username-wrapper input { margin-bottom: 0 !important; border: none !important; padding-left: 4px !important; }
+
+        /* Сайбар (Боковое меню) */
+        .sidebar { width: 240px; background-color: #2b2d31; display: flex; flex-direction: column; border-right: 1px solid #1f2023; z-index: 10; transition: transform 0.3s ease; }
+        .sidebar-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .section-title { font-weight: bold; font-size: 12px; color: #949ba4; padding: 15px 10px 5px 10px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+        .add-btn { cursor: pointer; color: #fff; font-size: 16px; padding: 0 5px; }
+        .list-item { padding: 10px 12px; margin: 2px 8px; border-radius: 4px; color: #949ba4; cursor: pointer; font-weight: 500; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s, color 0.2s; }
+        .list-item:hover, .list-item.active { background-color: #35373c; color: #fff; }
+        .list-item.channel .room-name::before { content: "# "; }
+        .room-del-btn { color: #949ba4; font-size: 14px; cursor: pointer; display: none; padding: 0 4px; }
+        .list-item:hover .room-del-btn { display: inline-block; }
+        .room-del-btn:hover { color: #f23f43; }
+
+        /* Профиль пользователя внизу */
+        .user-panel { background-color: #232428; padding: 10px; display: flex; align-items: center; justify-content: space-between; height: 56px; border-top: 1px solid #1f2023; }
+        .user-info { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background-color: #5865f2; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; flex-shrink: 0; text-transform: uppercase; overflow: hidden; }
+        .user-names { display: flex; flex-direction: column; min-width: 0; }
+        .user-display-name { color: #fff; font-size: 13px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-tag { color: #949ba4; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .settings-btn { color: #b5bac1; cursor: pointer; font-size: 18px; padding: 4px; transition: color 0.2s; user-select: none; }
+        .settings-btn:hover { color: #dbdee1; }
+
+        /* Область чата */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background-color: #313338; position: relative; }
+        .chat-header { height: 48px; display: flex; align-items: center; padding: 0 16px; background-color: #313338; border-bottom: 1px solid #1f2023; font-weight: bold; color: #fff; gap: 10px; }
+        .menu-toggle { display: none; font-size: 20px; cursor: pointer; color: #b5bac1; user-select: none; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+        
+        /* Сообщения */
+        .msg { display: flex; gap: 12px; max-width: 85%; align-self: flex-start; animation: fadeIn 0.2s ease forwards; }
+        .msg.my-msg { align-self: flex-end; flex-direction: row-reverse; }
+        .msg-body { display: flex; flex-direction: column; background-color: #383a40; padding: 10px 14px; border-radius: 8px; }
+        .msg.my-msg .msg-body { background-color: #404249; }
+        .msg .meta { font-size: 12px; margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
+        .msg .author { font-weight: bold; color: #fff; }
+        .msg .username { color: #00aff4; }
+        .msg .text { font-size: 15px; word-break: break-word; color: #dbdee1; }
+        .delete-btn { color: #f23f43; cursor: pointer; font-size: 11px; margin-top: 5px; font-weight: bold; align-self: flex-end; user-select: none; opacity: 0.6; }
+        .delete-btn:hover { opacity: 1; }
+
+        /* Поле ввода */
+        .input-area { padding: 0 20px 20px 20px; }
+        .input-wrapper { display: flex; background-color: #383a40; border-radius: 8px; padding: 10px; }
+        .input-wrapper input { flex: 1; background: none; border: none; color: #dbdee1; font-size: 16px; outline: none; }
+        .input-wrapper button { background-color: #5865f2; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; }
+
+        /* Модальные окна */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-card { background: #313338; padding: 24px; border-radius: 8px; width: 100%; max-width: 440px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); color: #dbdee1; }
+        .modal-card h3 { color: #fff; margin-bottom: 12px; }
+        .modal-card p { margin-bottom: 14px; font-size: 14px; color: #949ba4; }
+        .modal-card input { background-color: #1e1f22; border: 1px solid #1f2023; padding: 12px; border-radius: 4px; color: #fff; width: 100%; margin-bottom: 15px; outline: none; font-size: 15px; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; }
+        .modal-btn { padding: 10px 20px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .modal-btn.cancel { background: transparent; color: #fff; }
+        .modal-btn.confirm-red { background-color: #da373c; color: white; }
+        .modal-btn.confirm-blue { background-color: #5865f2; color: white; }
+        
+        .logout-btn { background-color: #f23f43; color: white; border: none; padding: 10px; border-radius: 4px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .logout-btn:hover { background-color: #da373c; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-out { opacity: 0 !important; transform: scale(0.9) !important; }
+
+        @media (max-width: 768px) {
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .menu-toggle { display: block; }
+            .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 5; display: none; }
+            .sidebar-overlay.active { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <div id="auth-block">
+        <div class="auth-card">
+            <h2 id="auth-title">Регистрация в Lumix</h2>
+            
+            <input type="text" id="reg-name" placeholder="Отображаемое имя">
+            
+            <div class="username-wrapper">
+                <span class="username-prefix">@</span>
+                <input type="text" id="reg-username" placeholder="ivan">
+            </div>
+            
+            <input type="password" id="reg-password" placeholder="Пароль">
+            
+            <div id="reg-avatar-section">
+                <label class="file-upload-btn">
+                    📁 Выбрать аватарку с устройства
+                    <input type="file" id="reg-avatar" accept="image/*" style="display: none;" onchange="handleFileSelect(this, 'reg')">
+                </label>
+                <div id="reg-avatar-preview" style="color: #23a55a; font-size: 13px; margin-bottom: 15px; display: none;">✓ Картинка загружена!</div>
+            </div>
+            
+            <button id="auth-submit-btn" onclick="handleAuthSubmit()">Зарегистрироваться</button>
+            
+            <div>
+                <span class="auth-toggle-link" id="auth-toggle-btn" onclick="toggleAuthMode()">Уже есть аккаунт? Войти</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="custom-modal">
+        <div class="modal-card">
+            <h3 id="modal-title">Заголовок</h3>
+            <p id="modal-text">Описание</p>
+            <input type="text" id="modal-input" style="display: none;">
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">Отмена</button>
+                <button class="modal-btn" id="modal-confirm-btn">Действие</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-card">
+            <h3>Настройки профиля</h3>
+            <p>Измените свои данные:</p>
+            
+            <label style="font-size: 12px; color: #b5bac1;">Отображаемое имя</label>
+            <input type="text" id="settings-name">
+            
+            <label style="font-size: 12px; color: #b5bac1;">Юзернейм</label>
+            <div class="username-wrapper">
+                <span class="username-prefix">@</span>
+                <input type="text" id="settings-username">
+            </div>
+            
+            <label style="font-size: 12px; color: #b5bac1;">Сменить аватарку</label>
+            <label class="file-upload-btn">
+                📁 Загрузить новое фото
+                <input type="file" id="settings-avatar" accept="image/*" style="display: none;" onchange="handleFileSelect(this, 'settings')">
+            </label>
+            <div id="settings-avatar-preview" style="color: #23a55a; font-size: 13px; margin-bottom: 15px; display: none;">✓ Фото обновлено!</div>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeSettingsModal()">Отмена</button>
+                <button class="modal-btn confirm-blue" onclick="saveSettings()">Сохранить</button>
+            </div>
+            <hr style="border: 0; border-top: 1px solid #1f2023; margin: 15px 0;">
+            <button class="logout-btn" onclick="logout()">Выйти из аккаунта</button>
+        </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-content">
+            <div class="section-title">Комнаты <span class="add-btn" onclick="openCreateRoomModal()">+</span></div>
+            <div id="rooms-list"></div>
+        </div>
+        
+        <div class="user-panel">
+            <div class="user-info">
+                <div id="user-avatar-block-container">
+                    <div class="avatar" id="user-avatar-block">U</div>
+                </div>
+                <div class="user-names">
+                    <span class="user-display-name" id="user-panel-name">Имя</span>
+                    <span class="user-tag" id="user-panel-tag">@username</span>
+                </div>
+            </div>
+            <span class="settings-btn" onclick="openSettingsModal()">⚙</span>
+        </div>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-header">
+            <span class="menu-toggle" onclick="toggleSidebar()">☰</span>
+            <span id="current-room-title"># general</span>
+        </div>
+        <div class="messages" id="chat-messages"></div>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="message-input" placeholder="Написать..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button onclick="sendMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const serverUrl = "wss://lumix-massanger.onrender.com";
+        let socket = new WebSocket(serverUrl);
+        
+        let myInfo = JSON.parse(localStorage.getItem("lumix_user")) || null;
+        let currentRoom = "general";
+        let rooms = JSON.parse(localStorage.getItem("lumix_rooms_list")) || ["general"];
+        let messagesHistory = JSON.parse(localStorage.getItem("lumix_history")) || {};
+
+        let activeModalCallback = null;
+        let tempAvatarBase64 = ""; 
+        let authMode = "register"; 
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.action === "msg") {
+                if (!messagesHistory[data.room]) messagesHistory[data.room] = [];
+                if (!messagesHistory[data.room].some(m => m.id === data.id)) {
+                    messagesHistory[data.room].push(data);
+                    localStorage.setItem("lumix_history", JSON.stringify(messagesHistory));
+                }
+                if (data.room === currentRoom) {
+                    displayMsg(data);
+                    scrollDown();
+                }
+            } 
+            else if (data.action === "delete") {
+                if (messagesHistory[data.room]) {
+                    messagesHistory[data.room] = messagesHistory[data.room].filter(m => m.id !== data.id);
+                    localStorage.setItem("lumix_history", JSON.stringify(messagesHistory));
+                }
+                if (data.room === currentRoom) {
+                    const el = document.getElementById(`msg-${data.id}`);
+                    if (el) el.remove();
+                }
+            }
+        };
+
+        function toggleAuthMode() {
+            const title = document.getElementById("auth-title");
+            const nameInput = document.getElementById("reg-name");
+            const avatarSection = document.getElementById("reg-avatar-section");
+            const submitBtn = document.getElementById("auth-submit-btn");
+            const toggleBtn = document.getElementById("auth-toggle-btn");
+
+            if (authMode === "register") {
+                authMode = "login";
+                title.innerText = "Вход в Lumix";
+                nameInput.style.display = "none";
+                avatarSection.style.display = "none";
+                submitBtn.innerText = "Войти";
+                toggleBtn.innerText = "Нет аккаунта? Зарегистрироваться";
+            } else {
+                authMode = "register";
+                title.innerText = "Регистрация в Lumix";
+                nameInput.style.display = "block";
+                avatarSection.style.display = "block";
+                submitBtn.innerText = "Зарегистрироваться";
+                toggleBtn.innerText = "Уже есть аккаунт? Войти";
+            }
+        }
+
+        function handleAuthSubmit() {
+            const user = document.getElementById("reg-username").value.trim().replace("@", "").toLowerCase();
+            const password = document.getElementById("reg-password").value.trim();
+
+            if (!user || !password) { alert("Заполните юзернейм и пароль!"); return; }
+
+            if (authMode === "register") {
+                const name = document.getElementById("reg-name").value.trim();
+                if (!name) { alert("Введите отображаемое имя!"); return; }
+                myInfo = { name: name, username: user, password: password, avatar: tempAvatarBase64 };
+            } else {
+                myInfo = { 
+                    name: user.charAt(0).toUpperCase() + user.slice(1), 
+                    username: user, 
+                    password: password, 
+                    avatar: "" 
+                };
+            }
+
+            localStorage.setItem("lumix_user", JSON.stringify(myInfo));
+            tempAvatarBase64 = "";
+            document.getElementById("auth-block").style.display = "none";
+            init();
+        }
+
+        function handleFileSelect(input, mode) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 100;
+                    canvas.height = 100;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 100, 100);
+                    tempAvatarBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById(`${mode}-avatar-preview`).style.display = "block";
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function getAvatarHtml(name, avatarData) {
+            if (avatarData && avatarData.startsWith('data:image')) {
+                return `<img src="${avatarData}" class="avatar" alt="">`;
+            }
+            return `<div class="avatar">${name ? name.charAt(0) : 'U'}</div>`;
+        }
+
+        // Исправлено обновление аватарки в левой панели, чтобы она менялась сразу
+        function updatePanelProfile() {
+            if (myInfo) {
+                document.getElementById("user-panel-name").innerText = myInfo.name;
+                document.getElementById("user-panel-tag").innerText = `@${myInfo.username}`;
+                const container = document.getElementById("user-avatar-block-container");
+                if (myInfo.avatar && myInfo.avatar.startsWith('data:image')) {
+                    container.innerHTML = `<img src="${myInfo.avatar}" class="avatar" id="user-avatar-block">`;
+                } else {
+                    container.innerHTML = `<div class="avatar" id="user-avatar-block">${myInfo.name ? myInfo.name.charAt(0) : 'U'}</div>`;
+                }
+            }
+        }
+
+        function init() {
+            updatePanelProfile();
+            renderRooms();
+            selectRoom(currentRoom);
+        }
+
+        function renderRooms() {
+            const container = document.getElementById("rooms-list");
+            container.innerHTML = "";
+            rooms.forEach(r => {
+                const activeClass = r === currentRoom ? "active" : "";
+                let delBtnHtml = r !== "general" ? `<span class="room-del-btn" onclick="event.stopPropagation(); openDeleteRoomModal('${r}')">✕</span>` : '';
+                container.innerHTML += `<div class="list-item channel ${activeClass}" onclick="selectRoom('${r}')" id="room-${r}"><span class="room-name">${r}</span>${delBtnHtml}</div>`;
+            });
+        }
+
+        function openCreateRoomModal() {
+            openModal("Создание комнаты", "Введите название комнаты (латиницей):", "Создать", false, true, function(name) {
+                let formattedName = name.trim().toLowerCase();
+                if (formattedName && !rooms.includes(formattedName)) {
+                    rooms.push(formattedName);
+                    localStorage.setItem("lumix_rooms_list", JSON.stringify(rooms));
+                    renderRooms();
+                    selectRoom(formattedName);
+                }
+            });
+        }
+
+        function openDeleteRoomModal(roomName) {
+            openModal("Удалить комнату?", `Комната #${roomName} будет удалена локально.`, "Удалить", true, false, function() {
+                rooms = rooms.filter(r => r !== roomName);
+                localStorage.setItem("lumix_rooms_list", JSON.stringify(rooms));
+                delete messagesHistory[roomName];
+                localStorage.setItem("lumix_history", JSON.stringify(messagesHistory));
+                if (currentRoom === roomName) selectRoom("general"); else renderRooms();
+            });
+        }
+
+        function selectRoom(room) {
+            currentRoom = room;
+            renderRooms();
+            document.getElementById("current-room-title").innerText = `# ${room}`;
+            const msgBox = document.getElementById("chat-messages");
+            msgBox.innerHTML = "";
+            if (messagesHistory[currentRoom]) { messagesHistory[currentRoom].forEach(m => displayMsg(m)); }
+            scrollDown();
+            if (window.innerWidth <= 768) toggleSidebar(false);
+        }
+
+        function displayMsg(m) {
+            const msgBox = document.getElementById("chat-messages");
+            const isMe = m.username === myInfo?.username;
+            const msgDiv = document.createElement("div");
+            msgDiv.classList.add("msg");
+            if (isMe) msgDiv.classList.add("my-msg");
+            msgDiv.id = `msg-${m.id}`;
+            
+            let delBtn = isMe ? `<span class="delete-btn" onclick="openDeleteMessageModal(${m.id})">Удалить</span>` : '';
+            let avatarHtml = getAvatarHtml(m.author, m.avatar);
+
+            msgDiv.innerHTML = `
+                ${avatarHtml}
+                <div class="msg-body">
+                    <div class="meta"><span class="author">${m.author}</span><span class="username">@${m.username}</span></div>
+                    <div class="text">${m.text}</div>
+                    ${delBtn}
+                </div>
+            `;
+            msgBox.appendChild(msgDiv);
+        }
+
+        function openDeleteMessageModal(id) {
+            openModal("Удалить сообщение?", "Удалить сообщение для всех?", "Удалить", true, false, function() {
+                socket.send(JSON.stringify({ action: "delete", room: currentRoom, id: id }));
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById("message-input");
+            if (input.value.trim() !== "" && socket.readyState === WebSocket.OPEN) {
+                const msgData = {
+                    action: "msg",
+                    id: Date.now() + Math.floor(Math.random() * 1000),
+                    room: currentRoom,
+                    author: myInfo.name,
+                    username: myInfo.username,
+                    password: myInfo.password,
+                    avatar: myInfo.avatar,
+                    text: input.value.trim()
+                };
+                socket.send(JSON.stringify(msgData));
+                input.value = "";
+            }
+        }
+
+        function openSettingsModal() {
+            document.getElementById("settings-name").value = myInfo.name;
+            document.getElementById("settings-username").value = myInfo.username;
+            document.getElementById("settings-avatar-preview").style.display = "none";
+            tempAvatarBase64 = myInfo.avatar || "";
+            document.getElementById("settings-modal").classList.add("active");
+        }
+        
+        function closeSettingsModal() { document.getElementById("settings-modal").classList.remove("active"); }
+        
+        function saveSettings() {
+            const newName = document.getElementById("settings-name").value.trim();
+            const newUsername = document.getElementById("settings-username").value.trim().replace("@", "").toLowerCase();
+            if (!newName || !newUsername) return;
+            
+            myInfo.name = newName;
+            myInfo.username = newUsername;
+            myInfo.avatar = tempAvatarBase64; 
+            localStorage.setItem("lumix_user", JSON.stringify(myInfo));
+            updatePanelProfile();
+            closeSettingsModal();
+        }
+
+        function logout() {
+            if (confirm("Вы уверены?")) {
+                localStorage.removeItem("lumix_user");
+                location.reload();
+            }
+        }
+
+        function toggleSidebar(force) {
+            const sidebar = document.getElementById("sidebar");
+            const overlay = document.getElementById("sidebar-overlay");
+            const isOpen = force !== undefined ? force : !sidebar.classList.contains("open");
+            if (isOpen) { sidebar.classList.add("open"); overlay.classList.add("active"); } 
+            else { sidebar.classList.remove("open"); overlay.classList.remove("active"); }
+        }
+
+        function openModal(title, text, confirmText, isDanger, showInput, callback) {
+            document.getElementById("modal-title").innerText = title;
+            document.getElementById("modal-text").innerText = text;
+            const inputEl = document.getElementById("modal-input");
+            if (showInput) { inputEl.style.display = "block"; inputEl.value = ""; } else { inputEl.style.display = "none"; }
+            const btn = document.getElementById("modal-confirm-btn");
+            btn.innerText = confirmText;
+            btn.className = is
