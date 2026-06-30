@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumix Messenger</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { display: flex; height: 100vh; background-color: #313338; color: #dbdee1; }
+        
+        /* Боковая панель (как в Discord) */
+        .sidebar { width: 240px; background-color: #2b2d31; display: flex; flex-direction: column; padding: 10px; border-right: 1px solid #1f2023; }
+        .server-title { font-weight: bold; font-size: 18px; padding: 10px; color: #fff; border-bottom: 1px solid #1f2023; margin-bottom: 10px; }
+        .channel { padding: 8px 12px; border-radius: 4px; background-color: #404249; color: #fff; cursor: pointer; font-weight: 500; margin-bottom: 5px; }
+        .channel::before { content: "# "; color: #80848e; }
+
+        /* Основная зона чата */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background-color: #313338; }
+        .chat-header { height: 48px; display: flex; align-items: center; padding: 0 16px; background-color: #313338; border-bottom: 1px solid #1f2023; font-weight: bold; color: #fff; }
+        
+        /* Список сообщений */
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .msg { display: flex; flex-direction: column; background-color: #383a40; padding: 10px; border-radius: 8px; max-width: 80%; }
+        .msg .author { font-weight: bold; color: #5865f2; font-size: 14px; margin-bottom: 4px; }
+        .msg .text { font-size: 15px; word-break: break-word; }
+
+        /* Поле ввода */
+        .input-area { padding: 0 20px 24px 20px; background-color: #313338; }
+        .input-wrapper { display: flex; background-color: #383a40; border-radius: 8px; padding: 10px; align-items: center; }
+        .input-wrapper input { flex: 1; background: none; border: none; color: #dbdee1; font-size: 16px; outline: none; padding: 5px; }
+        .input-wrapper button { background-color: #5865f2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .input-wrapper button:hover { background-color: #4752c4; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="server-title">Lumix Space</div>
+        <div class="channel">основной-чат</div>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-header"># основной-чат</div>
+        <div class="messages" id="chat-messages">
+            <div class="msg">
+                <span class="author">Система Lumix</span>
+                <span class="text">Добро пожаловать в мессенджер! Введите ник и общайтесь.</span>
+            </div>
+        </div>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="message-input" placeholder="Написать в #основной-чат" onkeypress="if(event.key === 'Enter') sendMessage()">
+                <button onclick="sendMessage()">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Подключаемся к твоему WebSocket серверу на Render
+        // Меняем https:// на wss:// для работы протокола веб-сокетов
+        const serverUrl = "wss://lumix-massanger.onrender.com";
+        const socket = new WebSocket(serverUrl);
+
+        const username = prompt("Введите ваш ник для чата:", "Пользователь_" + Math.floor(Math.random() * 1000));
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const msgBox = document.getElementById("chat-messages");
+            
+            // Создаем визуальное сообщение
+            const msgDiv = document.createElement("div");
+            msgDiv.classList.add("msg");
+            
+            msgDiv.innerHTML = `<span class="author">${data.user}</span><span class="text">${data.text}</span>`;
+            msgBox.appendChild(msgDiv);
+            
+            // Автопрокрутка вниз
+            msgBox.scrollTop = msgBox.scrollHeight;
+        };
+
+        function sendMessage() {
+            const input = document.getElementById("message-input");
+            if (input.value.trim() !== "") {
+                const messageData = {
+                    user: username,
+                    text: input.value
+                };
+                // Отправляем структурированный JSON на сервер
+                socket.send(JSON.stringify(messageData));
+                input.value = "";
+            }
+        }
+
+        socket.onopen = () => { console.log("Успешно подключено к серверу Lumix!"); };
+        socket.onerror = (error) => { console.error("Ошибка сети:", error); };
+    </script>
+</body>
+  </html>
+  
