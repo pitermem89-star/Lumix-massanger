@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Friend Chat</title>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #1e1f22;
+    color: white;
+    display: flex;
+    height: 100vh;
+}
+
+.chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.msg {
+    background: #2b2d31;
+    margin: 5px;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.input {
+    display: flex;
+    padding: 10px;
+    background: #2b2d31;
+}
+
+input {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: #1e1f22;
+    color: white;
+}
+
+button {
+    margin-left: 10px;
+    background: #5865f2;
+    border: none;
+    color: white;
+    padding: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="chat">
+<div id="messages" class="messages"></div>
+
+<div class="input">
+<input id="text" placeholder="message...">
+<button onclick="send()">➤</button>
+</div>
+</div>
+
+<script>
+const socket = io();
+
+let room = prompt("Имя комнаты (одинаковое у тебя и друга):");
+let user = prompt("Твоё имя:");
+
+socket.emit("join", {room, user});
+
+socket.on("message", (data)=>{
+    let div = document.createElement("div");
+    div.className = "msg";
+    div.innerHTML = `<b>${data.user}</b>: ${data.text}`;
+    messages.appendChild(div);
+});
+
+socket.on("system", (text)=>{
+    let div = document.createElement("div");
+    div.className = "msg";
+    div.style.opacity = "0.6";
+    div.innerText = text;
+    messages.appendChild(div);
+});
+
+function send(){
+    socket.emit("message", {
+        room,
+        user,
+        text: text.value
+    });
+    text.value = "";
+}
+</script>
+
+</body>
+</html>
