@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumix Messenger</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { display: flex; height: 100vh; background-color: #313338; color: #dbdee1; overflow: hidden; }
+        
+        /* Авторизация / Регистрация */
+        #auth-block { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1e1f22; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
+        .auth-card { background: #313338; padding: 30px; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; }
+        .auth-card h2 { color: #fff; margin-bottom: 20px; }
+        .auth-card input { background-color: #1e1f22; border: 1px solid #1f2023; padding: 12px; border-radius: 4px; color: #fff; width: 100%; margin-bottom: 15px; outline: none; font-size: 16px; }
+        .auth-card button { background-color: #5865f2; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; margin-bottom: 10px; }
+        .auth-card a { color: #00aff4; text-decoration: none; font-size: 14px; cursor: pointer; display: block; margin-top: 5px; }
+
+        /* Панель комнат и ЛС */
+        .sidebar { width: 260px; background-color: #2b2d31; display: flex; flex-direction: column; border-right: 1px solid #1f2023; }
+        .section-title { font-weight: bold; font-size: 12px; color: #949ba4; padding: 15px 10px 5px 10px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+        .add-btn { cursor: pointer; color: #fff; font-size: 16px; }
+        .list-item { padding: 8px 12px; margin: 2px 8px; border-radius: 4px; color: #949ba4; cursor: pointer; font-weight: 500; display: flex; justify-content: space-between; }
+        .list-item:hover, .list-item.active { background-color: #35373c; color: #fff; }
+        .list-item.channel::before { content: "# "; }
+        .list-item.user::before { content: "@ "; }
+
+        /* Чат */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background-color: #313338; }
+        .chat-header { height: 48px; display: flex; align-items: center; padding: 0 16px; background-color: #313338; border-bottom: 1px solid #1f2023; font-weight: bold; color: #fff; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        .msg { display: flex; flex-direction: column; background-color: #383a40; padding: 10px; border-radius: 8px; max-width: 85%; align-self: flex-start; position: relative; }
+        .msg.my-msg { align-self: flex-end; background-color: #404249; }
+        .msg .meta { font-size: 12px; margin-bottom: 4px; }
+        .msg .author { font-weight: bold; color: #fff; margin-right: 5px; }
+        .msg .username { color: #00aff4; }
+        .msg .text { font-size: 15px; word-break: break-word; }
+        .delete-btn { color: #f23f43; cursor: pointer; font-size: 11px; margin-top: 5px; display: inline-block; text-align: right; font-weight: bold;}
+
+        /* Поле ввода */
+        .input-area { padding: 0 20px 20px 20px; }
+        .input-wrapper { display: flex; background-color: #383a40; border-radius: 8px; padding: 10px; }
+        .input-wrapper input { flex: 1; background: none; border: none; color: #dbdee1; font-size: 16px; outline: none; }
+        .input-wrapper button { background-color: #5865f2; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-block">
+        <div class="auth-card" id="login-form">
+            <h2>С возвращением!</h2>
+            <input type="text" id="log-username" placeholder="Юзернейм (например, @ivan)">
+            <input type="password" id="log-password" placeholder="Пароль">
+            <button onclick="auth('login')">Войти</button>
+            <a onclick="toggleAuth(true)">Создать аккаунт</a>
+        </div>
+        <div class="auth-card" id="register-form" style="display:none;">
+            <h2>Создать аккаунт</h2>
+            <input type="text" id="reg-name" placeholder="Имя (отображаемое в чате)">
+            <input type="text" id="reg-username" placeholder="Уникальный юзернейм (начнётся с @)">
+            <input type="password" id="reg-password" placeholder="Пароль">
+            <button onclick="auth('register')">Зарегистрироваться</button>
+            <a onclick="toggleAuth(false)">Уже есть аккаунт?</a>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="section-title">Комнаты <span class="add-btn" onclick="createRoom()">+</span></div>
+        <div id="rooms-list">
+            <div class="list-item channel active" onclick="selectRoom('general')" id="room-general">основной-чат</div>
+        </div>
+        <div class="section-title">Личные сообщения</div>
+        <div id="users-list"></div>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-header" id="current-room-title"># основной-чат</div>
+        <div class="messages" id="chat-messages"></div>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="message-input" placeholder="Написать..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button onclick="sendMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const serverUrl = "wss://lumix-massanger.onrender.com";
+        let socket = new WebSocket(serverUrl);
+        let myInfo = JSON.parse(localStorage.getItem("lumix_session")) || null;
+        let currentRoom = "general";
+        let localRooms = JSON.parse(localStorage.getItem("lumix_rooms")) || ["general"];
+
+        function toggleAuth(isReg) {
+            document.getElementById("login-form").style.display = isReg ? "none" : "block";
+            document.getElementById("register-form").style.display = isReg ? "block" : "none";
+        }
+
+        socket.onopen = () => {
+            if(myInfo) {
+                // Если сессия сохранена, автоматически логинимся
+                socket.send(jsonReq("login", {username: myInfo.username, password: myInfo.password}));
+            }
+        };
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.action === "auth_success") {
+                myInfo = { user_id: data.user_id, username: data.username, display_name: data.display_name, password: myInfo?.password || document.getElementById("reg-password").value || document.getElementById("log-password").value };
+                localStorage.setItem("lumix_session", JSON.stringify(myInfo));
+                document.getElementById("auth-block").style.style.display = "none";
+                socket.send(jsonReq("get_rooms_and_users", {}));
+                selectRoom(currentRoom);
+                renderRooms();
+            }
+            else if (data.action === "error") {
+                alert(data.message);
+            }
+            else if (data.action === "users_list") {
+                const container = document.getElementById("users-list");
+                container.innerHTML = "";
+                data.users.forEach(u => {
+                    if(u.id !== myInfo.user_id) {
+                        const p2pRoom = `p2p:${Math.min(myInfo.user_id, u.id)}:${Math.max(myInfo.user_id, u.id)}`;
+                        container.innerHTML += `<div class="list-item user" id="room-${p2pRoom}" onclick="selectRoom('${p2pRoom}', '${u.display_name}')">${u.display_name}</div>`;
+                    }
+                });
+            }
+            else if (data.action === "history" && data.room === currentRoom) {
+                const msgBox = document.getElementById("chat-messages");
+                msgBox.innerHTML = "";
+                data.messages.forEach(m => displayMsg(m));
+                msgBox.scrollTop = msgBox.scrollHeight;
+            }
+            else if (data.action === "new_msg" && data.room === currentRoom) {
+                displayMsg(data);
+                const msgBox = document.getElementById("chat-messages");
+                msgBox.scrollTop = msgBox.scrollHeight;
+            }
+            else if (data.action === "msg_deleted" && data.room === currentRoom) {
+                const el = document.getElementById(`msg-${data.id}`);
+                if(el) el.remove();
+            }
+        };
+
+        function auth(type) {
+            const data = type === 'register' ? 
+                { action: "register", display_name: document.getElementById("reg-name").value, username: document.getElementById("reg-username").value, password: document.getElementById("reg-password").value } :
+                { action: "login", username: document.getElementById("log-username").value, password: document.getElementById("log-password").value };
+            socket.send(JSON.stringify(data));
+        }
+
+        function renderRooms() {
+            const container = document.getElementById("rooms-list");
+            container.innerHTML = `<div class="list-item channel ${currentRoom==='general'?'active':''}" onclick="selectRoom('general')" id="room-general">основной-чат</div>`;
+            localRooms.forEach(r => {
+                if(r !== "general") {
+                    container.innerHTML += `<div class="list-item channel ${currentRoom===r?'active':''}" onclick="selectRoom('${r}')" id="room-${r}">${r}</div>`;
+                }
+            });
+        }
+
+        function createRoom() {
+            const name = prompt("Введите название новой комнаты (английскими буквами):").trim().toLowerCase();
+            if(name && !localRooms.includes(name)) {
+                localRooms.push(name);
+                localStorage.setItem("lumix_rooms", JSON.stringify(localRooms));
+                renderRooms();
+                selectRoom(name);
+            }
+        }
+
+        function selectRoom(room, label) {
+            currentRoom = room;
+            document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
+            const activeEl = document.getElementById(`room-${room}`);
+            if(activeEl) activeEl.classList.add('active');
+            
+            document.getElementById("current-room-title").innerText = label ? `@ ${label}` : `# ${room}`;
+            socket.send(jsonReq("load_room", {room: currentRoom}));
+        }
+
+        function displayMsg(m) {
+            const msgBox = document.getElementById("chat-messages");
+            const isMe = m.sender_id === myInfo.user_id;
+            const msgDiv = document.createElement("div");
+            msgDiv.classList.add("msg");
+            if(isMe) msgDiv.classList.add("my-msg");
+            msgDiv.id = `msg-${m.id}`;
+            
+            let delHtml = isMe ? `<span class="delete-btn" onclick="deleteMessage(${m.id})">Удалить</span>` : '';
+            msgDiv.innerHTML = `<div class="meta"><span class="author">${m.author}</span><span class="username">@${m.username}</span></div>
+                                <div class="text">${m.text}</div>${delHtml}`;
+            msgBox.appendChild(msgDiv);
+        }
+
+        function sendMessage() {
+            const input = document.getElementById("message-input");
+            if (input.value.trim() !== "") {
+                socket.send(jsonReq("msg", {room: currentRoom, text: input.value}));
+                input.value = "";
+            }
+        }
+
+        function deleteMessage(id) {
+            if(confirm("Удалить сообщение?")) {
+                socket.send(jsonReq("delete_msg", {id: id, room: currentRoom}));
+            }
+        }
+
+        function jsonReq(action, obj) { return JSON.stringify({action: action, ...obj}); }
+        if(myInfo) { document.getElementById("auth-block").style.display = "none"; }
+    </script>
+</body>
+                  </html>
+                    
