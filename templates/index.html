@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>V8 Chat</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #1e1f22;
+    color: white;
+    display: flex;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+}
+
+.chat {
+    width: 420px;
+    height: 600px;
+    background: #2b2d31;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.header {
+    padding: 10px;
+    background: #1f2023;
+    text-align: center;
+    font-weight: bold;
+}
+
+.messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.msg {
+    background: #3a3c43;
+    padding: 8px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+}
+
+.msg .user {
+    color: #00aff4;
+    font-size: 12px;
+}
+
+.input {
+    display: flex;
+    padding: 10px;
+    background: #1f2023;
+}
+
+input {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    outline: none;
+    border-radius: 6px;
+}
+
+button {
+    margin-left: 6px;
+    background: #5865f2;
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="chat">
+    <div class="header">💬 Lumix Chat V8</div>
+
+    <div id="messages" class="messages"></div>
+
+    <div class="input">
+        <input id="msg" placeholder="Сообщение..." />
+        <button onclick="sendMsg()">➤</button>
+    </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+const socket = io();
+
+let username = prompt("Твоё имя:");
+
+function sendMsg() {
+    const input = document.getElementById("msg");
+    if (!input.value) return;
+
+    socket.send({
+        text: input.value,
+        user: username
+    });
+
+    input.value = "";
+}
+
+socket.on("message", (data) => {
+    const div = document.createElement("div");
+    div.className = "msg";
+    div.innerHTML = `
+        <div class="user">${data.user} • ${data.time}</div>
+        <div>${data.text}</div>
+    `;
+    document.getElementById("messages").appendChild(div);
+
+    document.getElementById("messages").scrollTop =
+        document.getElementById("messages").scrollHeight;
+});
+</script>
+
+</body>
+</html>
