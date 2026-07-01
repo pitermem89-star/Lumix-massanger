@@ -1,14 +1,13 @@
 from flask import Flask, render_template
-from flask_socketio import SocketIO, send, emit
+from flask_socketio import SocketIO
 import time
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret"
 
-# ВАЖНО: async_mode='threading' — чтобы НЕ использовать eventlet
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
-messages = []  # память сообщений (простая версия)
+messages = []
 
 @app.route("/")
 def index():
@@ -22,10 +21,8 @@ def handle_message(data):
         "user": data["user"],
         "time": time.strftime("%H:%M")
     }
-
     messages.append(msg)
-    emit("message", msg, broadcast=True)
+    socketio.emit("message", msg)
 
 
-if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=10000)
+# ❌ ВАЖНО: НЕ запускаем socketio.run() в Render
