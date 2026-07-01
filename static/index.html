@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Lumix V4</title>
+<title>Lumix V7</title>
 
 <style>
 body {
@@ -14,25 +14,32 @@ body {
     color:white;
 }
 
-/* SIDEBAR */
-#rooms {
-    width:200px;
+/* LEFT PANEL */
+#left {
+    width:250px;
     background:#2b2d31;
     padding:10px;
 }
 
+/* ROOMS */
 .room {
     padding:10px;
     cursor:pointer;
     border-radius:6px;
 }
+.room:hover { background:#404249; }
 
-.room:hover {
-    background:#404249;
+/* DM USERS */
+.user {
+    padding:6px;
+    font-size:13px;
+    cursor:pointer;
+    color:#aaa;
 }
+.user:hover { color:white; }
 
 /* CHAT */
-#chat-box {
+#chatbox {
     flex:1;
     display:flex;
     flex-direction:column;
@@ -51,12 +58,10 @@ body {
     border-radius:8px;
 }
 
-.me {
-    background:#5865f2;
-}
+.me { background:#5865f2; }
 
 /* INPUT */
-#input-area {
+#bar {
     display:flex;
     padding:10px;
     background:#2b2d31;
@@ -82,17 +87,23 @@ button {
 
 <body>
 
-<div id="rooms">
-    <div class="room" onclick="joinRoom('general')"># general</div>
-    <div class="room" onclick="joinRoom('games')"># games</div>
+<div id="left">
+    <b>Rooms</b>
+    <div class="room" onclick="join('general')"># general</div>
+    <div class="room" onclick="join('games')"># games</div>
+
+    <hr>
+
+    <b>Users</b>
+    <div id="users"></div>
 </div>
 
-<div id="chat-box">
+<div id="chatbox">
     <div id="chat"></div>
 
-    <div id="input-area">
-        <input id="input" placeholder="сообщение...">
-        <button onclick="sendMsg()">➤</button>
+    <div id="bar">
+        <input id="input">
+        <button onclick="send()">➤</button>
     </div>
 </div>
 
@@ -101,45 +112,70 @@ button {
 <script>
 const socket = io();
 
-let name = prompt("Имя?") || "anon";
-let room = "general";
+let token = localStorage.getItem("token");
+let name = localStorage.getItem("name");
 
-function joinRoom(r) {
-    room = r;
-    document.getElementById("chat").innerHTML = "";
-    socket.emit("join", {room: room});
+if (!token) {
+    let mode = prompt("login/register");
+    let n = prompt("name");
+    let p = prompt("password");
+
+    socket.emit(mode, {name:n, password:p});
 }
 
-socket.on("history", (msgs) => {
-    msgs.forEach(addMsg);
+socket.on("auth", (res) => {
+    if (!res.ok) {
+        alert("auth failed");
+        location.reload();
+    } else {
+        token = res.token;
+        name = res.name;
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("name", name);
+
+        join("general");
+    }
 });
 
-socket.on("message", (data) => {
-    addMsg(data);
+let room = "general";
+
+function join(r) {
+    room = r;
+    document.getElementById("chat").innerHTML = "";
+    socket.emit("join", {room});
+}
+
+socket.on("history", (msgs) => msgs.forEach(add));
+socket.on("message", add);
+
+socket.on("online", (users) => {
+    document.getElementById("users").innerHTML =
+        users.map(u => `<div class="user">🟢 ${u}</div>`).join("");
 });
 
-function addMsg(data) {
+function add(m) {
     const div = document.createElement("div");
-    div.className = "msg " + (data.name === name ? "me" : "");
-    div.innerHTML = `<b>${data.name}</b><br>${data.text}`;
+    div.className = "msg " + (m.name === name ? "me" : "");
+    div.innerHTML = `<b>${m.name}</b><br>${m.text}`;
     document.getElementById("chat").appendChild(div);
     document.getElementById("chat").scrollTop = 999999;
 }
 
-function sendMsg() {
-    const input = document.getElementById("input");
-    if (!input.value) return;
+function send() {
+    let i = document.getElementById("input");
+    if (!i.value) return;
 
     socket.emit("message", {
-        room: room,
-        name: name,
-        text: input.value
+        room,
+        name,
+        text: i.value
     });
 
-    input.value = "";
+    i.value = "";
 }
 
-joinRoom("general");
+join("general");
 </script>
 
 </body>
